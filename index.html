@@ -323,10 +323,17 @@
           detSel.disabled = true;
 
           lvlSel.addEventListener("change", () => {
-            detSel.disabled = (lvlSel.value === "0");
-            if (lvlSel.value === "0") detSel.value = "0";
-            autoSaveFromUI();
-          });
+          if (lvlSel.value === "2") {
+            // Endast allergisk → detalj tillåten
+            detSel.disabled = false;
+          } else {
+            // Inte allergisk ELLER spår av → ingen detalj
+            detSel.value = "0";
+            detSel.disabled = true;
+          }
+          autoSaveFromUI();
+        });
+
 
           detSel.addEventListener("change", autoSaveFromUI);
 
