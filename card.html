@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Allergikort</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#111111"/>
+
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#111111; --muted:#555;
+      --card:#f6f6f6; --border:#dddddd; --pill:#ffffff;
+      --danger:#b00020; --focus:#2b7cff;
+    }
+    html[data-theme="dark"]{
+      --bg:#0f1115; --fg:#f0f2f6; --muted:#b8c0cc;
+      --card:#171a21; --border:#2a2f3a; --pill:#0f1115;
+      --danger:#ff4d6d; --focus:#7ab0ff;
+    }
+    html[data-theme="hc"]{
+      --bg:#000; --fg:#fff; --muted:#fff;
+      --card:#000; --border:#fff; --pill:#000;
+      --danger:#ff3b3b; --focus:#00e5ff;
+    }
+    body{ margin:0; font-family:system-ui, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+    .wrap{ max-width:900px; margin:22px auto; padding:0 14px; }
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    button{
+      padding:12px 14px; border-radius:14px; border:1px solid var(--border);
+      background:var(--pill); color:var(--fg); cursor:pointer;
+      min-height:46px; font-size:15px;
+    }
+    button:focus{ outline:3px solid var(--focus); outline-offset:2px; }
+    .card{
+      border:1px solid var(--border); border-radius:18px; background:var(--card);
+      padding:16px;
+    }
+    .header{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    h1{ margin:0; font-size:28px; }
+    .pill{ padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:var(--pill); }
+    h2{ margin:18px 0 8px; font-size:18px; }
+    ul{ margin:6px 0 0; padding-left:18px; }
+    li{ margin:8px 0; font-size:18px; }
+    .note{ margin-top:12px; padding:10px; border-radius:14px; border:1px solid var(--border); background:var(--pill); }
+    .muted{ margin-top:12px; color:var(--muted); font-size:13px; line-height:1.35; }
+    .banner{
+      margin-top:12px; border:2px solid var(--danger); border-radius:14px;
+      padding:10px; background:rgba(176,0,32,0.06);
+      font-weight:600;
+    }
+    /* Kök-läge (större text) */
+    .kitchen h1{ font-size:34px; }
+    .kitchen h2{ font-size:22px; }
+    .kitchen li{ font-size:24px; margin:10px 0; }
+    .kitchen .muted{ display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <button id="toggleKitchen">Kök-läge</button>
+      <button id="toggleLang">Byt språk</button>
+      <button onclick="window.print()">Skriv ut</button>
+    </div>
+
+    <div id="mount"></div>
+  </div>
+
+  <script type="module">
+    import { renderCard, unpackFromCode, langFromPref, getText, registerSW } from "./common.js";
+    registerSW();
+
+    const $ = (id) => document.getElementById(id);
+    const p = new URLSearchParams(location.search);
+
+    const code = p.get("c");
+    const note = (p.get("note") || "").trim();
+    let mode = p.get("mode") || "normal";
+
+    function currentLang(codeStr) {
+      const st = unpackFromCode(codeStr);
+      return langFromPref(st.langPref);
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+      document.body.classList.toggle("kitchen", mode === "kitchen");
+      const url = new URL(location.href);
+      if (mode === "kitchen") url.searchParams.set("mode", "kitchen");
+      else url.searchParams.delete("mode");
+      history.replaceState({}, "", url.toString());
+      refresh();
+    }
+
+    function refresh() {
+      const mount = document.getElementById("mount");
+      mount.innerHTML = "";
+      renderCard(mount, { code, note, mode });
+      const lang = currentLang(code);
+      const T = getText(lang);
+      $("toggleKitchen").textContent = (mode === "kitchen") ? T.normalMode : T.kitchenMode;
+      $("toggleLang").textContent = (lang === "en") ? "Svenska" : "English";
+    }
+
+    if (!code) {
+      document.getElementById("mount").innerHTML =
+        `<div class="card"><h1>Ogiltig länk</h1><p>Ingen kod (c=) hittades.</p></div>`;
+    } else {
+      if (mode === "kitchen") document.body.classList.add("kitchen");
+      refresh();
+
+      $("toggleKitchen").addEventListener("click", () => setMode(mode === "kitchen" ? "normal" : "kitchen"));
+
+      $("toggleLang").addEventListener("click", () => {
+        // Byter språk genom att toggla langPref i koden via URL-flagga? (enkel demo-lösning)
+        // Vi ändrar inte koden; vi bara byter UI-språk genom att "tvinga" via query param.
+        const url = new URL(location.href);
+        const forced = url.searchParams.get("ui") || "";
+        url.searchParams.set("ui", forced === "en" ? "sv" : "en");
+        history.replaceState({}, "", url.toString());
+
+        // renderCard använder kodens språk. För tvång: reload med staff-mode? Här kör vi enkel reload:
+        location.reload();
+      });
+    }
+  </script>
+</body>
+</html>
