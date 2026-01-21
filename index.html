@@ -320,7 +320,7 @@
 
           const detSel = makeSelect(detailOptions[uiLang], 0);
           detSel.id = `det_${it.id}`;
-          detSel.disabled = true;
+          detSel.style.display = "none"; // Helt dold från början
 
           lvlSel.addEventListener("change", () => {
           if (lvlSel.value === "2") {
