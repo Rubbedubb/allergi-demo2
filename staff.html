@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Personalläge – Allergikort</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#111111"/>
+
+  <style>
+    :root{ --bg:#fff; --fg:#111; --muted:#555; --border:#ddd; --pill:#fff; --focus:#2b7cff; }
+    html[data-theme="dark"]{ --bg:#0f1115; --fg:#f0f2f6; --muted:#b8c0cc; --border:#2a2f3a; --pill:#171a21; --focus:#7ab0ff; }
+    html[data-theme="hc"]{ --bg:#000; --fg:#fff; --muted:#fff; --border:#fff; --pill:#000; --focus:#00e5ff; }
+    body{ margin:0; font-family:system-ui, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+    .wrap{ max-width:900px; margin:22px auto; padding:0 14px; }
+    .card{ border:1px solid var(--border); border-radius:18px; padding:16px; background:var(--pill); }
+    h1{ margin:0 0 10px; font-size:26px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+    input{
+      padding:14px 14px; border-radius:14px; border:1px solid var(--border);
+      min-height:48px; font-size:16px; width:min(520px, 100%);
+      background:var(--bg); color:var(--fg);
+    }
+    button{
+      padding:12px 14px; border-radius:14px; border:1px solid var(--border);
+      background:var(--bg); color:var(--fg); cursor:pointer; min-height:48px;
+    }
+    input:focus, button:focus{ outline:3px solid var(--focus); outline-offset:2px; }
+    .muted{ color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Personalläge</h1>
+      <div class="muted">Klistra in kortkod (backup) och tryck “Visa”.</div>
+
+      <div class="row">
+        <input id="code" placeholder="Ex: 0F3K... (kortkod)" autocomplete="off">
+        <button id="show">Visa</button>
+        <button id="kitchen">Kök-läge</button>
+      </div>
+
+      <div id="mount" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { renderCard, registerSW } from "./common.js";
+    registerSW();
+
+    const $ = (id) => document.getElementById(id);
+    const p = new URLSearchParams(location.search);
+
+    function show(mode) {
+      const code = $("code").value.trim();
+      if (!code) return;
+      const url = new URL(location.href);
+      url.searchParams.set("c", code);
+      history.replaceState({}, "", url.toString());
+      $("mount").innerHTML = "";
+      renderCard($("mount"), { code, note:"", mode });
+      document.body.classList.toggle("kitchen", mode === "kitchen");
+    }
+
+    const initial = p.get("c");
+    if (initial) {
+      $("code").value = initial;
+      show("normal");
+    }
+
+    $("show").addEventListener("click", () => show("normal"));
+    $("kitchen").addEventListener("click", () => show("kitchen"));
+  </script>
+</body>
+</html>
