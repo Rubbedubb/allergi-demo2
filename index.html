@@ -324,16 +324,15 @@
 
           lvlSel.addEventListener("change", () => {
           if (lvlSel.value === "2") {
-            // Endast allergisk → detalj tillåten
-            detSel.disabled = false;
+            // Allergisk → visa detalj
+            detSel.style.display = "inline-block";
           } else {
-            // Inte allergisk ELLER spår av → ingen detalj
+            // Inte allergisk / Spår av → dölj detalj helt
             detSel.value = "0";
-            detSel.disabled = true;
+            detSel.style.display = "none";
           }
           autoSaveFromUI();
         });
-
 
           detSel.addEventListener("change", autoSaveFromUI);
 
@@ -427,8 +426,12 @@
 
         lvlSel.value = String(st.levels[i] || 0);
         detSel.value = String(st.details[i] || 0);
-        detSel.disabled = (lvlSel.value === "0");
-        if (lvlSel.value === "0") detSel.value = "0";
+        if (lvlSel.value === "2") {
+          detSel.style.display = "inline-block";
+        } else {
+          detSel.value = "0";
+          detSel.style.display = "none";
+        }
       }
     }
 
