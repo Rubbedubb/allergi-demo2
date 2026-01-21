@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Allergikort – Skapa</title>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#111111"/>
+
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#111111; --muted:#555;
+      --card:#f6f6f6; --border:#dddddd; --pill:#ffffff;
+      --btn:#ffffff; --btnfg:#111;
+      --danger:#b00020;
+      --focus:#2b7cff;
+    }
+    html[data-theme="dark"]{
+      --bg:#0f1115; --fg:#f0f2f6; --muted:#b8c0cc;
+      --card:#171a21; --border:#2a2f3a; --pill:#0f1115;
+      --btn:#171a21; --btnfg:#f0f2f6;
+      --danger:#ff4d6d;
+      --focus:#7ab0ff;
+    }
+    html[data-theme="hc"]{
+      --bg:#000; --fg:#fff; --muted:#fff;
+      --card:#000; --border:#fff; --pill:#000;
+      --btn:#000; --btnfg:#fff;
+      --danger:#ff3b3b;
+      --focus:#00e5ff;
+    }
+    body{
+      margin:0; font-family:system-ui, Arial, sans-serif;
+      background:var(--bg); color:var(--fg);
+    }
+    .wrap{ max-width:980px; margin:22px auto; padding:0 14px; }
+    h1{ margin:0 0 6px; font-size:28px; }
+    .muted{ color:var(--muted); }
+    .topbar{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      margin:12px 0 14px;
+    }
+    .card{
+      border:1px solid var(--border); border-radius:16px;
+      background:var(--card); padding:14px;
+    }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label{ font-size:14px; }
+    select,input[type="text"]{
+      padding:12px 12px; border-radius:14px; border:1px solid var(--border);
+      background:var(--pill); color:var(--fg); font-size:15px;
+      min-height:46px;
+    }
+    button{
+      padding:12px 14px; border-radius:14px; border:1px solid var(--border);
+      background:var(--btn); color:var(--btnfg); cursor:pointer;
+      font-size:15px; min-height:46px;
+    }
+    button:focus, select:focus, input:focus{
+      outline:3px solid var(--focus); outline-offset:2px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap:10px 14px;
+    }
+    .item{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px; padding:10px; border:1px solid var(--border);
+      border-radius:14px; background:var(--pill);
+    }
+    .item .name{ font-size:15px; }
+    .item .controls{ display:flex; gap:8px; }
+    .item select{ min-width:150px; }
+    fieldset{
+      border:1px solid var(--border); border-radius:16px;
+      padding:12px; margin:12px 0; background:transparent;
+    }
+    legend{ padding:0 8px; font-weight:600; }
+    .search{ width: min(560px, 100%); }
+    .small{ font-size:13px; }
+    .linkbox{
+      word-break:break-all; background:var(--pill);
+      border:1px solid var(--border); border-radius:14px; padding:10px;
+    }
+    #qrcode{ margin-top:10px; }
+    .profilebar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .danger{ color:var(--danger); font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Allergikort</h1>
+    <div class="muted">Skapa QR-kod / kortkod. För fik & restaurang. (Demo)</div>
+
+    <div class="topbar card">
+      <div class="profilebar">
+        <label>Profil</label>
+        <select id="profileSelect"></select>
+        <button id="newProfile">Ny</button>
+        <button id="renameProfile">Byt namn</button>
+        <button id="deleteProfile">Ta bort</button>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <label>Språk</label>
+        <select id="langPref">
+          <option value="auto">Auto</option>
+          <option value="sv">Svenska</option>
+          <option value="en">English</option>
+        </select>
+
+        <label>Känslighet</label>
+        <select id="sensHigh">
+          <option value="0">Normal</option>
+          <option value="1">Mycket känslig</option>
+        </select>
+
+        <label>Tema</label>
+        <select id="theme">
+          <option value="system">System</option>
+          <option value="light">Ljust</option>
+          <option value="dark">Mörkt</option>
+          <option value="hc">Hög kontrast</option>
+        </select>
+
+        <button id="resetAll">Återställ allt</button>
+      </div>
+
+      <div class="row" style="margin-top:10px; width:100%;">
+        <input id="search" class="search" type="text" placeholder="Sök allergen (t.ex. sesam, mjölk, nöt)...">
+        <span class="muted small">Val: Inte allergisk / Spår av / Allergisk + detalj (mild/måttlig/allvarlig)</span>
+      </div>
+    </div>
+
+    <div id="formMount"></div>
+
+    <div class="card" style="margin-top:12px;">
+      <label>Extra info (valfritt)</label>
+      <input id="note" type="text" placeholder="t.ex. 'rena redskap', 'spår kan vara farligt', 'separat stekyta'">
+
+      <div class="row" style="margin-top:12px;">
+        <button id="make">Skapa / uppdatera QR</button>
+        <button id="share">Dela kort</button>
+        <button id="copyLink">Kopiera länk</button>
+      </div>
+
+      <h3 style="margin:14px 0 6px;">Kortkod (backup)</h3>
+      <div class="linkbox" id="codeBox">—</div>
+      <div class="row" style="margin-top:10px;">
+        <button id="copyCode">Kopiera kortkod</button>
+        <a id="staffLink" class="muted" href="#" style="align-self:center;">Öppna personalläge</a>
+      </div>
+
+      <h3 style="margin:16px 0 6px;">QR-kod</h3>
+      <div id="qrcode"></div>
+
+      <h3 style="margin:16px 0 6px;">Länk (för test)</h3>
+      <div class="linkbox" id="linkBox">—</div>
+
+      <div class="muted small" style="margin-top:10px;">
+        Offline: om du öppnat sidorna minst en gång kan de fungera utan nät (begränsat).
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script type="module">
+    import {
+      CATEGORIES, ALLERGENS, LANG_PREF, THEMES,
+      packToCode, unpackFromCode, langFromPref, themeKeyFromVal,
+      urlHere, applyTheme, registerSW
+    } from "./common.js";
+
+    registerSW();
+
+    const LS_KEY = "allergy_profiles_v1";
+
+    const $ = (id) => document.getElementById(id);
+
+    const levelOptions = {
+      sv: [
+        { v:0, t:"Inte allergisk" },
+        { v:1, t:"Spår av / undvik spår" },
+        { v:2, t:"Allergisk" }
+      ],
+      en: [
+        { v:0, t:"Not allergic" },
+        { v:1, t:"Traces / avoid traces" },
+        { v:2, t:"Allergic" }
+      ]
+    };
+
+    const detailOptions = {
+      sv: [
+        { v:0, t:"Ingen detalj" },
+        { v:1, t:"mild" },
+        { v:2, t:"måttlig" },
+        { v:3, t:"allvarlig" }
+      ],
+      en: [
+        { v:0, t:"No detail" },
+        { v:1, t:"mild" },
+        { v:2, t:"moderate" },
+        { v:3, t:"severe" }
+      ]
+    };
+
+    function getUiLang() {
+      const pref = $("langPref").value;
+      if (pref === "en") return "en";
+      if (pref === "sv") return "sv";
+      // auto
+      return (navigator.language || "sv").toLowerCase().startsWith("en") ? "en" : "sv";
+    }
+
+    function emptyState() {
+      return {
+        langPref: LANG_PREF.auto,
+        sensHigh: false,
+        theme: THEMES.system,
+        levels: new Array(ALLERGENS.length).fill(0),
+        details: new Array(ALLERGENS.length).fill(0),
+        note: ""
+      };
+    }
+
+    // ---- Profiles ----
+    function loadProfiles() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch { return null; }
+    }
+
+    function saveProfiles(data) {
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    function ensureProfiles() {
+      let data = loadProfiles();
+      if (!data || !Array.isArray(data.profiles) || data.profiles.length === 0) {
+        const st = emptyState();
+        const code = packToCode(st);
+        data = {
+          currentId: crypto.randomUUID(),
+          profiles: [{
+            id: null,
+            name: "Profil 1",
+            code,
+            note: ""
+          }]
+        };
+        data.profiles[0].id = data.currentId;
+        saveProfiles(data);
+      }
+      return data;
+    }
+
+    function setProfileSelect(data) {
+      const sel = $("profileSelect");
+      sel.innerHTML = "";
+      for (const p of data.profiles) {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.name;
+        if (p.id === data.currentId) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function getCurrentProfile(data) {
+      return data.profiles.find(p => p.id === data.currentId) || data.profiles[0];
+    }
+
+    // ---- Form building ----
+    const mount = $("formMount");
+
+    function makeSelect(opts, value) {
+      const s = document.createElement("select");
+      for (const o of opts) {
+        const op = document.createElement("option");
+        op.value = String(o.v);
+        op.textContent = o.t;
+        s.appendChild(op);
+      }
+      s.value = String(value ?? 0);
+      return s;
+    }
+
+    function buildForm(uiLang) {
+      mount.innerHTML = "";
+      for (const cat of CATEGORIES) {
+        const fs = document.createElement("fieldset");
+        const lg = document.createElement("legend");
+        lg.textContent = uiLang === "en" ? cat.en : cat.sv;
+        fs.appendChild(lg);
+
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        for (const it of cat.items) {
+          const idx = ALLERGENS.findIndex(x => x.id === it.id);
+          const row = document.createElement("div");
+          row.className = "item";
+          row.dataset.label = (uiLang === "en" ? it.en : it.sv).toLowerCase();
+          row.dataset.cat = cat.key;
+
+          const name = document.createElement("div");
+          name.className = "name";
+          name.textContent = uiLang === "en" ? it.en : it.sv;
+
+          const controls = document.createElement("div");
+          controls.className = "controls";
+
+          const lvlSel = makeSelect(levelOptions[uiLang], 0);
+          lvlSel.id = `lvl_${it.id}`;
+
+          const detSel = makeSelect(detailOptions[uiLang], 0);
+          detSel.id = `det_${it.id}`;
+          detSel.disabled = true;
+
+          lvlSel.addEventListener("change", () => {
+            detSel.disabled = (lvlSel.value === "0");
+            if (lvlSel.value === "0") detSel.value = "0";
+            autoSaveFromUI();
+          });
+
+          detSel.addEventListener("change", autoSaveFromUI);
+
+          controls.appendChild(lvlSel);
+          controls.appendChild(detSel);
+
+          row.appendChild(name);
+          row.appendChild(controls);
+          grid.appendChild(row);
+        }
+
+        fs.appendChild(grid);
+        mount.appendChild(fs);
+      }
+      applySearchFilter();
+    }
+
+    function applySearchFilter() {
+      const q = $("search").value.trim().toLowerCase();
+      const fieldsets = Array.from(mount.querySelectorAll("fieldset"));
+
+      for (const fs of fieldsets) {
+        let any = false;
+        const rows = Array.from(fs.querySelectorAll(".item"));
+        for (const r of rows) {
+          const show = !q || r.dataset.label.includes(q);
+          r.style.display = show ? "" : "none";
+          if (show) any = true;
+        }
+        fs.style.display = any ? "" : "none";
+      }
+    }
+
+    $("search").addEventListener("input", applySearchFilter);
+
+    // ---- State sync ----
+    let profileData = ensureProfiles();
+    setProfileSelect(profileData);
+
+    function uiToState() {
+      const uiLang = getUiLang();
+      const st = emptyState();
+
+      // langPref
+      st.langPref = ( $("langPref").value === "sv" ? LANG_PREF.sv :
+                      $("langPref").value === "en" ? LANG_PREF.en : LANG_PREF.auto );
+
+      // sens
+      st.sensHigh = $("sensHigh").value === "1";
+
+      // theme
+      const th = $("theme").value;
+      st.theme = THEMES[th] ?? THEMES.system;
+
+      // note
+      st.note = $("note").value.trim();
+
+      for (let i = 0; i < ALLERGENS.length; i++) {
+        const id = ALLERGENS[i].id;
+        const lvl = Number(document.getElementById(`lvl_${id}`)?.value || 0);
+        const det = Number(document.getElementById(`det_${id}`)?.value || 0);
+        st.levels[i] = lvl;
+        st.details[i] = det;
+      }
+
+      // apply theme immediately
+      applyTheme(th);
+
+      return st;
+    }
+
+    function stateToUI(st) {
+      $("langPref").value =
+        (st.langPref === LANG_PREF.sv) ? "sv" :
+        (st.langPref === LANG_PREF.en) ? "en" : "auto";
+
+      $("sensHigh").value = st.sensHigh ? "1" : "0";
+      $("theme").value = Object.keys(THEMES).find(k => THEMES[k] === st.theme) || "system";
+      applyTheme($("theme").value);
+
+      $("note").value = st.note || "";
+
+      const uiLang = getUiLang();
+      buildForm(uiLang);
+
+      for (let i = 0; i < ALLERGENS.length; i++) {
+        const id = ALLERGENS[i].id;
+        const lvlSel = document.getElementById(`lvl_${id}`);
+        const detSel = document.getElementById(`det_${id}`);
+        if (!lvlSel || !detSel) continue;
+
+        lvlSel.value = String(st.levels[i] || 0);
+        detSel.value = String(st.details[i] || 0);
+        detSel.disabled = (lvlSel.value === "0");
+        if (lvlSel.value === "0") detSel.value = "0";
+      }
+    }
+
+    function autoSaveFromUI() {
+      const st = uiToState();
+      const code = packToCode(st);
+
+      // spara i aktuell profil
+      const cur = getCurrentProfile(profileData);
+      cur.code = code;
+      cur.note = st.note;
+      saveProfiles(profileData);
+
+      // uppdatera outputs
+      updateOutputs(code, st.note);
+    }
+
+    function updateOutputs(code, note) {
+      const cardUrl = new URL(urlHere("card.html"));
+      cardUrl.searchParams.set("c", code);
+      if (note) cardUrl.searchParams.set("note", note);
+
+      $("codeBox").textContent = code;
+      $("linkBox").textContent = cardUrl.toString();
+
+      // staff link
+      const staffUrl = new URL(urlHere("staff.html"));
+      staffUrl.searchParams.set("c", code);
+      $("staffLink").href = staffUrl.toString();
+
+      // QR
+      $("qrcode").innerHTML = "";
+      new QRCode($("qrcode"), { text: cardUrl.toString(), width: 220, height: 220 });
+    }
+
+    // Profile change
+    $("profileSelect").addEventListener("change", () => {
+      profileData.currentId = $("profileSelect").value;
+      saveProfiles(profileData);
+
+      const cur = getCurrentProfile(profileData);
+      const decoded = unpackFromCode(cur.code);
+      const st = {
+        langPref: decoded.langPref,
+        sensHigh: decoded.sensHigh,
+        theme: decoded.theme,
+        levels: decoded.levels,
+        details: decoded.details,
+        note: cur.note || ""
+      };
+      stateToUI(st);
+      updateOutputs(cur.code, cur.note || "");
+    });
+
+    $("newProfile").addEventListener("click", () => {
+      const name = prompt("Namn på ny profil?", "Ny profil");
+      if (!name) return;
+      const st = emptyState();
+      const code = packToCode(st);
+      const id = crypto.randomUUID();
+      profileData.profiles.push({ id, name, code, note:"" });
+      profileData.currentId = id;
+      saveProfiles(profileData);
+      setProfileSelect(profileData);
+      $("profileSelect").dispatchEvent(new Event("change"));
+    });
+
+    $("renameProfile").addEventListener("click", () => {
+      const cur = getCurrentProfile(profileData);
+      const name = prompt("Nytt namn?", cur.name);
+      if (!name) return;
+      cur.name = name;
+      saveProfiles(profileData);
+      setProfileSelect(profileData);
+    });
+
+    $("deleteProfile").addEventListener("click", () => {
+      if (profileData.profiles.length <= 1) return alert("Du måste ha minst 1 profil.");
+      const cur = getCurrentProfile(profileData);
+      if (!confirm(`Ta bort "${cur.name}"?`)) return;
+      profileData.profiles = profileData.profiles.filter(p => p.id !== cur.id);
+      profileData.currentId = profileData.profiles[0].id;
+      saveProfiles(profileData);
+      setProfileSelect(profileData);
+      $("profileSelect").dispatchEvent(new Event("change"));
+    });
+
+    $("resetAll").addEventListener("click", () => {
+      for (const it of ALLERGENS) {
+        const lvl = document.getElementById(`lvl_${it.id}`);
+        const det = document.getElementById(`det_${it.id}`);
+        if (lvl) lvl.value = "0";
+        if (det) { det.value = "0"; det.disabled = true; }
+      }
+      autoSaveFromUI();
+    });
+
+    // Settings changes
+    $("langPref").addEventListener("change", () => {
+      // rebuild UI language (labels)
+      const cur = getCurrentProfile(profileData);
+      const st = uiToState();
+      const code = packToCode(st);
+      cur.code = code; cur.note = st.note;
+      saveProfiles(profileData);
+      // rebuild and restore
+      stateToUI(st);
+      updateOutputs(code, st.note);
+    });
+    $("sensHigh").addEventListener("change", autoSaveFromUI);
+    $("theme").addEventListener("change", autoSaveFromUI);
+    $("note").addEventListener("input", autoSaveFromUI);
+
+    // Actions
+    $("make").addEventListener("click", autoSaveFromUI);
+
+    $("copyLink").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText($("linkBox").textContent); alert("Länk kopierad!"); }
+      catch { alert("Kunde inte kopiera. Markera och kopiera manuellt."); }
+    });
+
+    $("copyCode").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText($("codeBox").textContent); alert("Kod kopierad!"); }
+      catch { alert("Kunde inte kopiera. Markera och kopiera manuellt."); }
+    });
+
+    $("share").addEventListener("click", async () => {
+      const url = $("linkBox").textContent;
+      if (navigator.share) {
+        try { await navigator.share({ title: "Allergikort", url }); }
+        catch {}
+      } else {
+        try { await navigator.clipboard.writeText(url); alert("Delning saknas här — länken är kopierad!"); }
+        catch { alert("Delning saknas — kopiera länken manuellt."); }
+      }
+    });
+
+    // Init load current profile
+    const cur = getCurrentProfile(profileData);
+    const decoded = unpackFromCode(cur.code);
+    const initState = {
+      langPref: decoded.langPref,
+      sensHigh: decoded.sensHigh,
+      theme: decoded.theme,
+      levels: decoded.levels,
+      details: decoded.details,
+      note: cur.note || ""
+    };
+    stateToUI(initState);
+    updateOutputs(cur.code, cur.note || "");
+  </script>
+</body>
+</html>
