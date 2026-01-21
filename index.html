@@ -325,9 +325,9 @@
           lvlSel.addEventListener("change", () => {
           if (lvlSel.value === "2") {
             // Allergisk → visa detalj
-            detSel.style.display = "inline-block";
+            detSel.style.display = "";
           } else {
-            // Inte allergisk / Spår av → dölj detalj helt
+            // Inte allergisk / Spår av → göm detalj helt + nollställ
             detSel.value = "0";
             detSel.style.display = "none";
           }
@@ -425,9 +425,11 @@
         if (!lvlSel || !detSel) continue;
 
         lvlSel.value = String(st.levels[i] || 0);
-        detSel.value = String(st.details[i] || 0);
+
+        // Om inte allergisk eller spår av: detalj ska inte ens kunna finnas
         if (lvlSel.value === "2") {
-          detSel.style.display = "inline-block";
+          detSel.style.display = "";
+          detSel.value = String(st.details[i] || 0);
         } else {
           detSel.value = "0";
           detSel.style.display = "none";
