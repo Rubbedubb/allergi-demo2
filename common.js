@@ -317,11 +317,16 @@ export function renderCard(container, { code, note, mode = "normal" }) {
 
     const it = ALLERGENS[i];
     const label = (lang === "en") ? it.en : it.sv;
-    const detTxt = detailLabel(lang, det);
-    const line = detTxt ? `${label} (${detTxt})` : label;
+    let line = label;
 
-    if (lvl === 2) allergic.push(line);
-    else traces.push(line);
+   // Visa detalj ENDAST om allergisk
+   if (lvl === 2 && det > 0) {
+     const detTxt = detailLabel(lang, det);
+     if (detTxt) line = `${label} (${detTxt})`;
+   }
+   
+   if (lvl === 2) allergic.push(line);
+   else traces.push(label); // aldrig detalj här
   }
 
   const sensTxt = state.sensHigh ? T.sensitiveHigh : T.sensitiveNormal;
